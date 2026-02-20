@@ -584,6 +584,43 @@ def test_transform_result_json_serialization_with_node_codes() -> None:
     assert all("original_code" in node for node in data["nodes"])
     assert all("optimized_code" in node for node in data["nodes"])
     assert all("is_optimized" in node for node in data["nodes"])
+    assert all("test_name" in node for node in data["nodes"])
+    assert all("test_code" in node for node in data["nodes"])
+
+
+def test_transform_with_spec_file_mapping() -> None:
+    source = textwrap.dedent(
+        """
+        def b():
+            return 1
+
+        def a():
+            return b()
+        """
+    )
+
+    spec = textwrap.dedent(
+        """
+        def test_a():
+            assert a() == 1
+
+        def test_b():
+            assert b() == 1
+        """
+    )
+
+    result = transform_code(source, return_result=True, spec_code=spec)
+
+    assert result.get_spec_code() == spec
+    assert result.get_test_mapping() == {"a": "test_a", "b": "test_b"}
+    assert "assert a() == 1" in (result.get_test_code("a") or "")
+    assert "assert b() == 1" in (result.get_test_code("b") or "")
+
+    data = __import__("json").loads(result.to_json(include_full_code=True))
+    assert data.get("spec_code") == spec
+    node_by_name = {node["name"]: node for node in data["nodes"]}
+    assert "def test_a()" in node_by_name["a"]["test_code"]
+    assert "def test_b()" in node_by_name["b"]["test_code"]
 
 
 def test_get_node_code_returns_correct_versions() -> None:

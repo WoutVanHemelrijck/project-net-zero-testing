@@ -83,6 +83,35 @@ print(result.get_execution_order())
 # ['d', 'b', 'c', 'a']
 ```
 
+### Spec file mapping (tests per function)
+
+If you have a spec file with `test_<function_name>()` for each function,
+you can pass its content to link tests to nodes.
+
+```python
+from treeStructure import transform_code
+
+code = """
+def a():
+    return b()
+
+def b():
+    return 1
+"""
+
+spec = """
+def test_a():
+    assert a() == 1
+
+def test_b():
+    assert b() == 1
+"""
+
+result = transform_code(code, return_result=True, spec_code=spec)
+print(result.get_test_mapping())
+# {'a': 'test_a', 'b': 'test_b'}
+```
+
 ### Get original code back
 
 ```python
@@ -136,18 +165,22 @@ optimized_code = result.get_node_code("a", optimized=True)
 - `execution_order`: Topological sort of functions
 - `statistics`: Total functions, leaf functions, etc.
 - `is_optimized`: Global flag
+- `test_name`: Linked test function name per node (if provided)
+- `test_code`: Linked test function code per node (if provided)
 
 **Example JSON structure:**
 
 ````json
 {
   "is_optimized": true,
-  "nodes": [
+    "nodes": [
     {
       "id": "b",
       "name": "b",
       "original_code": "def b():\n    return 1",
       "optimized_code": "class Node_b:\n    def b():\n        return 1",
+        "test_name": "test_b",
+        "test_code": "def test_b():\n    assert b() == 1",
       "is_optimized": true,
       "depends_on": [],
       "depended_by": ["a"]
@@ -157,6 +190,8 @@ optimized_code = result.get_node_code("a", optimized=True)
       "name": "a",
       "original_code": "def a():\n    return b()",
       "optimized_code": "class Node_a:\n    def a():\n        return b()",
+        "test_name": "test_a",
+        "test_code": "def test_a():\n    assert a() == 1",
       "is_optimized": true,
       "depends_on": ["b"],
       "depended_by": []
@@ -168,13 +203,14 @@ optimized_code = result.get_node_code("a", optimized=True)
 
 ## API Reference
 
-### `transform_code(source_code, is_optimized=True, return_result=False)`
+### `transform_code(source_code, is_optimized=True, return_result=False, spec_code=None)`
 
 **Parameters:**
 
 - `source_code` (str): Python code.
 - `is_optimized` (bool): Return transformed (True) or original code (False).
 - `return_result` (bool): Return string (False) or TransformResult object (True).
+- `spec_code` (str | None): Optional spec file content with `test_<function>` definitions.
 
 **Returns:**
 
@@ -194,6 +230,8 @@ optimized_code = result.get_node_code("a", optimized=True)
 - `dependencies`: Dict of dependencies
 - `execution_order`: Topological ordering
 - `node_codes`: Per-node code mapping: `{func_name: {original: code, optimized: code}}`
+- `spec_code`: Spec file content (optional)
+- `test_mapping`: Function → test mapping
 
 **Methods:**
 

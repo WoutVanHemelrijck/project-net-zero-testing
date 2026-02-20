@@ -10,7 +10,10 @@
     "total_dependencies": 3,
     "max_depth": 3,
     "has_circular_dependencies": false,
-    "leaf_functions": ["b", "d"]
+    "leaf_functions": [
+      "b",
+      "d"
+    ]
   },
   "nodes": [
     {
@@ -18,9 +21,13 @@
       "name": "d",
       "depth": 0,
       "depends_on": [],
-      "depended_by": ["c"],
-      "original_code": "def d():\n    return 5",
-      "optimized_code": "class Node_d:\n    def d():\n        return 5",
+      "depended_by": [
+        "c"
+      ],
+      "original_code": "def d():\n  return 5",
+      "optimized_code": "class Node_d:\n  def d():\n    return 5",
+      "test_name": "test_d",
+      "test_code": "def test_d():\n  assert d() == 5",
       "is_optimized": true
     },
     {
@@ -28,29 +35,44 @@
       "name": "b",
       "depth": 1,
       "depends_on": [],
-      "depended_by": ["a"],
-      "original_code": "def b():\n    return 10",
-      "optimized_code": "class Node_b:\n    def b():\n        return 10",
+      "depended_by": [
+        "a"
+      ],
+      "original_code": "def b():\n  return 10",
+      "optimized_code": "class Node_b:\n  def b():\n    return 10",
+      "test_name": "test_b",
+      "test_code": "def test_b():\n  assert b() == 10",
       "is_optimized": true
     },
     {
       "id": "c",
       "name": "c",
       "depth": 2,
-      "depends_on": ["d"],
-      "depended_by": ["a"],
-      "original_code": "def c():\n    return d()",
-      "optimized_code": "class Node_c:\n    def c():\n        return d()",
+      "depends_on": [
+        "d"
+      ],
+      "depended_by": [
+        "a"
+      ],
+      "original_code": "def c():\n  return d()",
+      "optimized_code": "class Node_c:\n  def c():\n    return d()",
+      "test_name": "test_c",
+      "test_code": "def test_c():\n  assert c() == 5",
       "is_optimized": true
     },
     {
       "id": "a",
       "name": "a",
       "depth": 3,
-      "depends_on": ["b", "c"],
+      "depends_on": [
+        "b",
+        "c"
+      ],
       "depended_by": [],
-      "original_code": "def a():\n    return b() + c()",
-      "optimized_code": "class Node_a:\n    def a():\n        return b() + c()",
+      "original_code": "def a():\n  return b() + c()",
+      "optimized_code": "class Node_a:\n  def a():\n    return b() + c()",
+      "test_name": "test_a",
+      "test_code": "def test_a():\n  assert a() == 15",
       "is_optimized": true
     }
   ],
@@ -71,11 +93,24 @@
       "type": "calls"
     }
   ],
-  "execution_order": ["d", "b", "c", "a"],
+  "execution_order": [
+    "d",
+    "b",
+    "c",
+    "a"
+  ],
   "dependencies": {
-    "a": ["b", "c"],
+    "a": [
+      "b",
+      "c"
+    ],
     "b": [],
-    "c": ["d"],
+    "c": [
+      "d"
+    ],
     "d": []
-  }
+  },
+  "original_code": "def d():\n  return 5\n\ndef b():\n  return 10\n\ndef c():\n  return d()\n\ndef a():\n  return b() + c()",
+  "optimized_code": "class Node_d:\n  def d():\n    return 5\n\nclass Node_b:\n  def b():\n    return 10\n\nclass Node_c:\n  def c():\n    return d()\n\nclass Node_a:\n  def a():\n    return b() + c()",
+  "spec_code": "def test_d():\n  assert d() == 5\n\ndef test_b():\n  assert b() == 10\n\ndef test_c():\n  assert c() == 5\n\ndef test_a():\n  assert a() == 15"
 }
