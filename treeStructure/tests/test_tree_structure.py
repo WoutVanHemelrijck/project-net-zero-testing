@@ -1,6 +1,6 @@
 import textwrap
 
-from treeStructure import TransformResult, transform_code
+from treeStructure import TransformResult, transform_code, write_optimized_file
 
 
 def test_transform_wraps_functions_in_node_classes() -> None:
@@ -125,6 +125,22 @@ def test_transform_result_fields_can_be_read_and_updated() -> None:
     assert result.optimized_code == "print('new-updated')"
     assert result.is_optimized is False
     assert result.selected_code == "print('old-updated')"
+
+
+def test_write_optimized_file_uses_optimized_or_original(tmp_path) -> None:
+    source = "def a():\n    return 1"
+    result = transform_code(source, return_result=True)
+
+    input_file = tmp_path / "input.py"
+    input_file.write_text(source)
+
+    output_path = write_optimized_file(result, input_file)
+    assert output_path.name == "optimized_input.py"
+    assert "class Node_a:" in output_path.read_text()
+
+    result.set_optimized_code("")
+    output_path = write_optimized_file(result, input_file)
+    assert output_path.read_text() == result.original_code
 
 
 def test_transform_result_includes_dependency_graph_and_execution_order() -> None:

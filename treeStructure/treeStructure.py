@@ -1,5 +1,6 @@
 from __future__ import annotations
 import ast
+from pathlib import Path
 from dataclasses import dataclass, field
 import json
 import networkx as nx
@@ -414,3 +415,20 @@ def transform_code(
         test_codes=test_codes,
     )
     return result if return_result else result.selected_code
+
+
+def write_optimized_file(result: TransformResult, input_file_path: str | Path) -> Path:
+    """Write optimized code to optimized_<input_file> or fall back to original.
+
+    Parameters:
+        result (TransformResult): Result with optimized/original code.
+        input_file_path (str | Path): Original input file path.
+
+    Returns:
+        Path: Path to the written output file.
+    """
+    input_path = Path(input_file_path)
+    output_path = input_path.with_name(f"optimized_{input_path.name}")
+    code = result.optimized_code if result.optimized_code.strip() else result.original_code
+    output_path.write_text(code, encoding="utf-8")
+    return output_path
