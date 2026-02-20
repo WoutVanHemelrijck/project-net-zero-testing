@@ -560,3 +560,50 @@ def test_transform_underscore_function_names() -> None:
     assert "class Node__private:" in result
     assert "class Node___dunder__:" in result
     assert "class Node_public:" in result
+
+
+def test_transform_result_json_serialization_with_node_codes() -> None:
+    source = textwrap.dedent(
+        """
+        def b():
+            return 1
+
+        def a():
+            return b()
+        """
+    )
+
+    result = transform_code(source, return_result=True)
+    json_str = result.to_json(include_full_code=False)
+    
+    assert json_str is not None
+    data = __import__("json").loads(json_str)
+    
+    assert "nodes" in data
+    assert len(data["nodes"]) == 2
+    assert all("original_code" in node for node in data["nodes"])
+    assert all("optimized_code" in node for node in data["nodes"])
+    assert all("is_optimized" in node for node in data["nodes"])
+
+
+def test_get_node_code_returns_correct_versions() -> None:
+    source = textwrap.dedent(
+        """
+        def helper():
+            return 42
+
+        def main():
+            return helper()
+        """
+    )
+
+    result = transform_code(source, return_result=True)
+    
+    original_helper = result.get_node_code("helper", optimized=False)
+    optimized_helper = result.get_node_code("helper", optimized=True)
+    
+    assert original_helper is not None
+    assert optimized_helper is not None
+    assert "def helper():" in original_helper
+    assert "class Node_helper:" in optimized_helper
+    assert result.get_node_code("nonexistent") is None

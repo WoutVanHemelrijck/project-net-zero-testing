@@ -1,6 +1,7 @@
 from __future__ import annotations
 import ast
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import json
 import networkx as nx
 
 
@@ -17,6 +18,7 @@ class TransformResult:
         is_optimized (bool): Flag to determine which code is returned by selected_code.
         dependencies (dict): Dependency graph: {function_name: [called_functions]}.
         execution_order (list): Topological sort of functions (leaf functions first).
+        node_codes (dict): Per-node code mapping: {func_name: {"original": code, "optimized": code}}.
     
     Example:
         >>> from treeStructure import transform_code
@@ -36,6 +38,7 @@ class TransformResult:
     is_optimized: bool
     dependencies: dict[str, list[str]]
     execution_order: list[str]
+    node_codes: dict[str, dict[str, str]] = field(default_factory=dict)
 
     @property
     def selected_code(self) -> str:
@@ -73,6 +76,87 @@ class TransformResult:
     def get_execution_order(self) -> list[str]:
         """Get topological sort order for functions (leaf functions first)."""
         return self.execution_order
+
+    def to_json(self, include_full_code: bool = False) -> str:
+        """Convert TransformResult to JSON for frontend transmission.
+        
+        Parameters:
+            include_full_code (bool): If True, include full original_code and optimized_code.
+                                     Node codes are always included.
+        
+        Returns:
+            str: JSON representation with per-node code, dependencies, and execution order.
+        
+        Example:
+            >>> result = transform_code(code, return_result=True)
+            >>> json_str = result.to_json()
+            >>> frontend_data = json.loads(json_str)
+            >>> # frontend_data contains nodes with per-node code
+        """
+        # Build nodes list with per-node code
+        nodes = []
+        for func_name in self.execution_order:
+            node = {
+                "id": func_name,
+                "name": func_name,
+                "depends_on": self.dependencies.get(func_name, []),
+                "depended_by": [
+                    caller
+                    for caller, callees in self.dependencies.items()
+                    if func_name in callees
+                ],
+                "original_code": self.node_codes.get(func_name, {}).get("original", ""),
+                "optimized_code": self.node_codes.get(func_name, {}).get("optimized", ""),
+                "is_optimized": self.is_optimized,
+            }
+            nodes.append(node)
+        
+        data = {
+            "is_optimized": self.is_optimized,
+            "execution_order": self.execution_order,
+            "dependencies": self.dependencies,
+            "nodes": nodes,
+            "statistics": {
+                "total_functions": len(self.defined_functions),
+                "total_dependencies": len(
+                    [dep for deps in self.dependencies.values() for dep in deps]
+                ),
+                "leaf_functions": [
+                    func for func, deps in self.dependencies.items() if not deps
+                ],
+            },
+        }
+        
+        if include_full_code:
+            data["original_code"] = self.original_code
+            data["optimized_code"] = self.optimized_code
+        
+        return json.dumps(data, indent=2)
+
+    @property
+    def defined_functions(self) -> set[str]:
+        """Get set of all defined function names."""
+        return set(self.dependencies.keys())
+
+    def get_node_code(self, func_name: str, optimized: bool = True) -> str | None:
+        """Get code for a specific function node.
+        
+        Parameters:
+            func_name (str): Name of the function/node.
+            optimized (bool): If True, return optimized code; if False, return original.
+        
+        Returns:
+            str: Code for the node, or None if not found.
+        
+        Example:
+            >>> result = transform_code(code, return_result=True)
+            >>> result.get_node_code("my_func", optimized=True)  # Get optimized version
+            >>> result.get_node_code("my_func", optimized=False)  # Get original version
+        """
+        if func_name not in self.node_codes:
+            return None
+        code_pair = self.node_codes[func_name]
+        return code_pair.get("optimized" if optimized else "original")
 
 
 class DependencyVisitor(ast.NodeVisitor):
@@ -211,6 +295,7 @@ def transform_code(
             is_optimized=is_optimized,
             dependencies=dependencies_dict,
             execution_order=[],
+            node_codes={},
         )
         return result if return_result else result.selected_code
 
@@ -220,10 +305,24 @@ def transform_code(
     }
     other_nodes = [node for node in tree.body if not isinstance(node, ast.FunctionDef)]
 
-    transformed_nodes = [
-        transformer.visit(function_nodes[function_name])
-        for function_name in execution_order
-    ]
+    # Build node_codes dict: {func_name: {original: code, optimized: code}}
+    node_codes: dict[str, dict[str, str]] = {}
+    transformed_nodes = []
+    
+    for function_name in execution_order:
+        original_node = function_nodes[function_name]
+        optimized_node = transformer.visit(original_node)
+        
+        # Extract per-node code
+        original_func_code = ast.unparse(original_node)
+        optimized_func_code = ast.unparse(optimized_node)
+        
+        node_codes[function_name] = {
+            "original": original_func_code,
+            "optimized": optimized_func_code,
+        }
+        
+        transformed_nodes.append(optimized_node)
 
     tree.body = other_nodes + transformed_nodes
     optimized_code = ast.unparse(tree)
@@ -234,5 +333,6 @@ def transform_code(
         is_optimized=is_optimized,
         dependencies=dependencies_dict,
         execution_order=execution_order,
+        node_codes=node_codes,
     )
     return result if return_result else result.selected_code
