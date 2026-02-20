@@ -1,0 +1,13 @@
+# RAG data
+rag/chroma_store/
+rag/patterns_repo/
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
