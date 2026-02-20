@@ -607,3 +607,88 @@ def test_get_node_code_returns_correct_versions() -> None:
     assert "def helper():" in original_helper
     assert "class Node_helper:" in optimized_helper
     assert result.get_node_code("nonexistent") is None
+
+
+def test_integration_real_world_code_transformation_with_output() -> None:
+    """Integration test: Transform a real-world Python file and display full output."""
+    
+    # Real-world example: calculator with dependencies
+    real_world_code = textwrap.dedent(
+        """
+        def add(a, b):
+            return a + b
+
+        def multiply(x, y):
+            return x * y
+
+        def calculate_sum(numbers):
+            total = 0
+            for num in numbers:
+                total = add(total, num)
+            return total
+
+        def calculate_total_price(quantities, unit_price):
+            total_qty = calculate_sum(quantities)
+            return multiply(total_qty, unit_price)
+
+        def format_result(value):
+            return f"Result: {value}"
+
+        def main(items, price):
+            total = calculate_total_price(items, price)
+            return format_result(total)
+        """
+    )
+    
+    print("\n" + "="*80)
+    print("INTEGRATION TEST: Real-World Python File Transformation")
+    print("="*80)
+    
+    # Transform with result object
+    result = transform_code(real_world_code, return_result=True)
+    
+    print("\n--- INPUT CODE ---")
+    print(real_world_code)
+    
+    print("\n--- DEPENDENCIES GRAPH ---")
+    deps = result.get_dependencies()
+    for func, calls in deps.items():
+        if calls:
+            print(f"  {func} calls: {calls}")
+        else:
+            print(f"  {func} [leaf function]")
+    
+    print("\n--- EXECUTION ORDER (Topological Sort) ---")
+    print("  " + " → ".join(result.get_execution_order()))
+    
+    print("\n--- STATISTICS ---")
+    print(f"  Total functions: {len(result.defined_functions)}")
+    print(f"  Leaf functions: {[f for f, calls in deps.items() if not calls]}")
+    
+    print("\n--- PER-NODE CODE (Original vs Optimized) ---")
+    for func_name in result.get_execution_order():
+        print(f"\n  ### {func_name.upper()} ###")
+        original = result.get_node_code(func_name, optimized=False)
+        optimized = result.get_node_code(func_name, optimized=True)
+        
+        print(f"\n  ORIGINAL:\n{textwrap.indent(original, '    ')}")
+        print(f"\n  OPTIMIZED:\n{textwrap.indent(optimized, '    ')}")
+    
+    print("\n--- FULL OPTIMIZED CODE ---")
+    print(result.get_optimized_code())
+    
+    print("\n--- JSON OUTPUT ---")
+    json_output = result.to_json(include_full_code=True)
+    print(json_output)
+    
+    # Assertions
+    assert result is not None
+    assert len(result.get_execution_order()) == 6
+    assert "main" in deps
+    assert "add" in deps
+    assert not deps["add"]  # add is a leaf
+    assert "calculate_total_price" in deps["main"]
+    
+    print("\n" + "="*80)
+    print("✓ Integration test passed!")
+    print("="*80 + "\n")
