@@ -103,6 +103,69 @@ result.set_is_optimized(False)
 print(result.selected_code)  # original
 ```
 
+### JSON serialization for frontend
+
+Export per-node code and dependencies as JSON for visualization/frontend:
+
+```python
+from treeStructure import transform_code
+
+code = """
+def b():
+    return 1
+
+def a():
+    return b()
+"""
+
+result = transform_code(code, return_result=True)
+
+# Convert to JSON with per-node code
+json_str = result.to_json()
+print(json_str)
+
+# Or get specific node code
+original_code = result.get_node_code("a", optimized=False)
+optimized_code = result.get_node_code("a", optimized=True)
+```
+
+**JSON output includes:**
+
+- `nodes`: Array with per-node original code, optimized code, and dependencies
+- `dependencies`: Full dependency graph
+- `execution_order`: Topological sort of functions
+- `statistics`: Total functions, leaf functions, etc.
+- `is_optimized`: Global flag
+
+**Example JSON structure:**
+
+````json
+{
+  "is_optimized": true,
+  "nodes": [
+    {
+      "id": "b",
+      "name": "b",
+      "original_code": "def b():\n    return 1",
+      "optimized_code": "class Node_b:\n    def b():\n        return 1",
+      "is_optimized": true,
+      "depends_on": [],
+      "depended_by": ["a"]
+    },
+    {
+      "id": "a",
+      "name": "a",
+      "original_code": "def a():\n    return b()",
+      "optimized_code": "class Node_a:\n    def a():\n        return b()",
+      "is_optimized": true,
+      "depends_on": ["b"],
+      "depended_by": []
+    }
+  ],
+  "execution_order": ["b", "a"],
+  "dependencies": {"a": ["b"], "b": []}
+}
+
 ## API Reference
 
 ### `transform_code(source_code, is_optimized=True, return_result=False)`
@@ -130,6 +193,7 @@ print(result.selected_code)  # original
 - `is_optimized`: Current mode
 - `dependencies`: Dict of dependencies
 - `execution_order`: Topological ordering
+- `node_codes`: Per-node code mapping: `{func_name: {original: code, optimized: code}}`
 
 **Methods:**
 
@@ -137,13 +201,15 @@ print(result.selected_code)  # original
 - `get_optimized_code()`, `set_optimized_code(code)`
 - `get_is_optimized()`, `set_is_optimized(value)`
 - `get_dependencies()`, `get_execution_order()`
+- `get_node_code(func_name, optimized=True)`: Get code for specific function
+- `to_json(include_full_code=False)`: Serialize to JSON with per-node code
 - `selected_code` (property): Returns correct code based on flag
 
 ## Tests
 
 ```bash
-pytest  # 26+ tests with full coverage
-```
+pytest  # 28+ tests with full coverage
+````
 
 ## Structure
 
@@ -153,7 +219,14 @@ treeStructure/
 ├── treeStructure.py     # Core logic
 └── tests/
     ├── conftest.py      # Test setup
-    └── test_tree_structure.py  # 26+ tests
+    └── test_tree_structure.py  # 28+ tests
+
+Other:
+├── README.md            # Documentation
+├── requirements.txt     # Python dependencies
+├── .gitignore          # Git ignore rules
+├── example_output.json  # Example JSON output with per-node code
+└── pytest.ini          # Test configuration
 ```
 
 ## Getting Started
